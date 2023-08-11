@@ -1,0 +1,16 @@
+{
+  "name": "RxJS_Project",
+  "version": "1.0.0",
+  "description": "https://www.tutorialspoint.com/rxjs/index.htm",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esm": "^3.2.25",
+    "rxjs": "^7.8.1"
+  }
+}
