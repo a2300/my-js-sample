@@ -5,18 +5,30 @@ mkdir typescript-jest
 cd typescript-jest
 mkdir src
 mkdir test
+```
 
+Initialize project with NPM
+```bash
 npm init -y
+```
 
+Create a boilerplate .gitignore file in our project specifically for Node.js
+```bash
 npx gitignore node
+```
 
 
+Install the required dependencies for TypeScript and Jest. -D flag means that packages need to be installed as developer dependencies
+```bash
 npm i -D typescript jest ts-jest @types/jest
+```
 
+Configure Typescript starter code
+```bash
 npx tsc --init
 ```
 
-tsconfig.json
+Will generate tsconfig.json. Need to change a bit
 ```json
 
 {
@@ -34,10 +46,12 @@ tsconfig.json
 }
 ```
 
+Configure Jest and starter tests
 ```bash
 npx ts-jest config:init
 ```
 
+add the test command for Jest in our package.json file
 package.json
 ```json
 "scripts": {
