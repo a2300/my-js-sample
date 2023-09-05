@@ -1,10 +1,9 @@
 import express from "express";
 import { Request, Response } from 'express'
-import * as userDatabase from '../repositories/user-repository';
-import * as cartDatabase from '../repositories/cart-repository';
-import * as orderDatabase from '../repositories/order-repository';
 import { StatusCodes } from "http-status-codes";
 import Joi from 'joi';
+import { UserNotFoundError } from "../errors/userNotFoundError";
+import CartController from "../controllers/cart-controller";
 
 
 const operationValues = ['ADD', 'REMOVE', 'AMOUNT'];
@@ -27,105 +26,91 @@ const inputSchema = Joi.object({
     items: Joi.array().items(itemSchema).min(1).required()
 });
 
+const controller = new CartController();
 export const cartRouter = express.Router();
 
 cartRouter.post('/cart', async (req: Request, res: Response) => {
     try {
-        const user = await userDatabase.findOne(req.header("x-user-id") || "");
-        if(!user) {
+        
+        const userId = req.header("x-user-id") || "";
+        const response = await controller.createCart(userId);
+        return res.status(StatusCodes.CREATED).json(response);
+    
+    }catch(err) {
+        if(err instanceof UserNotFoundError) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 data:null,
-                error: { message: "Header x-user-id is missing or no user with such id"}
-            });
+                error: { message: err.message }
+            });        
         }
-
-        const newCart = await cartDatabase.create(req.header("x-user-id") || "");
-
-        let totalPrice: number = 0;
-        newCart?.items.forEach(e => totalPrice += e.product.price * e.count);
-        return res.status(StatusCodes.CREATED).json({
-            error: null,
-            data: { cart: newCart},
-            totalPrice: totalPrice
-        });
-
-    }catch(err) {
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            data: null,
-            error: {message: "Ooops, something went wrong" }
-        });        
+        else 
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                data: null,
+                error: {message: "Ooops, something went wrong" }
+            });        
     }
 });
 
 cartRouter.get('/cart', async (req: Request, res: Response) => {
     try {
-        const user = await userDatabase.findOne(req.header("x-user-id") || "");
-        if(!user) {
-            return res.status(StatusCodes.UNAUTHORIZED).json({
-                data:null,
-                error: { message: "Header x-user-id is missing or no user with such id"}
-            });
-        }
+        const userId = req.header("x-user-id") || "";
+        const response = await controller.getCart(userId);
         
-        const retrievedCart = await cartDatabase.findOneByUserId(user.id);
-        if(!retrievedCart) {
-            return res.status(StatusCodes.NOT_FOUND).json({ 
+        if(!response) {
+            return res.status(StatusCodes.NOT_FOUND).json({
                 data: null, 
                 error: {
-                    message: `Cart with userId ${user.id} is not found` 
-                }
+                    message: `Cart with userId ${userId} is not found` 
+                }            
             });
         }
 
-        let totalPrice: number = 0;
-        retrievedCart?.items.forEach(e => totalPrice += e.product.price * e.count);
-        return res.status(StatusCodes.OK).json({
-            error: null,
-            data: { 
-                cart: {
-                    id: retrievedCart?.userId,
-                    items: retrievedCart?.items
-                } 
-            },
-            totalPrice: totalPrice
-        });        
-        
+        return res.status(StatusCodes.OK).json(response);
 
     }catch(err) {
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            data: null,
-            error: {message: "Ooops, something went wrong" }
-        });        
+        if(err instanceof UserNotFoundError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                data:null,
+                error: { message: err.message }
+            });        
+        }        
+        else 
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                data: null,
+                error: {message: "Ooops, something went wrong" }
+            });        
     }
 });
 
 cartRouter.delete('/cart', async (req: Request, res: Response) => {
-    const user = await userDatabase.findOne(req.header("x-user-id") || "");
-    if(!user) {
-        return res.status(StatusCodes.UNAUTHORIZED).json({
-            data:null,
-            error: { message: "Header x-user-id is missing or no user with such id"}
-        });
-    }
+    try {
+        const userId = req.header("x-user-id") || "";
+        const response = await controller.deleteCart(userId);
+        if(!response) {
+            return res.status(StatusCodes.NOT_FOUND).json({ 
+                data: {
+                    success: false
+                }, 
+                error: {
+                    message: `Cart with userId ${userId} is not found` 
+                }
+            });
+        }
 
-    const result = await cartDatabase.remove(user.id);
-    if(!result) {
-        return res.status(StatusCodes.NOT_FOUND).json({ 
-            data: {
-                success: false
-            }, 
-            error: {
-                message: `Cart with userId ${user.id} is not found` 
-            }
-        });
+        return res.status(StatusCodes.OK).json(response);
+    }catch(err) {
+        if(err instanceof UserNotFoundError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                data:null,
+                error: { message: err.message }
+            });        
+        }        
+        else 
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                data: null,
+                error: {message: "Ooops, something went wrong" }
+            });        
     }
-
-    return res.status(StatusCodes.OK).json({ 
-        data: {
-            success: true
-        }, 
-        error: false
-    });
 });
 
 cartRouter.put('/cart', async (req: Request, res: Response) =>{
@@ -136,18 +121,12 @@ cartRouter.put('/cart', async (req: Request, res: Response) =>{
             return res.status(400).json({ error: error.details[0].message });
           }
         
-        const user = await userDatabase.findOne(req.header("x-user-id") || "");
-        if(!user) {
-            return res.status(StatusCodes.UNAUTHORIZED).json({
-                data:null,
-                error: { message: "Header x-user-id is missing or no user with such id"}
-            });
-        }
+        const userId = req.header("x-user-id") || "";
 
         const { id, items, operation }  = req.body;
-        const findCart = await cartDatabase.findOneById(id);
+        const updateCart = await controller.updateCart(userId, id, items, operation);
 
-        if(!findCart) {
+        if(!updateCart) {
             return res.status(StatusCodes.NOT_FOUND).json({ 
                 data: {
                     success: false
@@ -158,55 +137,42 @@ cartRouter.put('/cart', async (req: Request, res: Response) =>{
             });            
         }
 
-        const updateCart = await cartDatabase.update(id, items, operation);
-
-        let totalPrice: number = 0;
-        updateCart?.items?.forEach(e => totalPrice += e.product.price * e.count);
-
-        return res.status(StatusCodes.OK).json({
-            error: null,
-            data: { 
-                cart: {
-                    id: updateCart?.id,
-                    items: updateCart?.items
-                } 
-            },
-            totalPrice: totalPrice
-        });   
+        return res.status(StatusCodes.OK).json(updateCart);   
 
     }catch(err) {
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            data: null,
-            error: {message: "Ooops, something went wrong" }
-        });        
+        if(err instanceof UserNotFoundError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                data:null,
+                error: { message: err.message }
+            });        
+        }        
+        else 
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                data: null,
+                error: {message: "Ooops, something went wrong" }
+            });        
     }
 });
 
 cartRouter.put('/cart/checkout', async (req: Request, res: Response) =>{
     try {
-        const user = await userDatabase.findOne(req.header("x-user-id") || "");
-        if(!user) {
+        const userId = req.header("x-user-id") || "";
+        const response = await controller.checkout(userId);
+        return res.status(StatusCodes.OK).json(response);    
+    }catch(err) {
+        if(err instanceof UserNotFoundError) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 data:null,
-                error: { message: "Header x-user-id is missing or no user with such id"}
-            });
-        }
-
-        const newOrder = await orderDatabase.create(req.header("x-user-id") || "");
-
-        return res.status(StatusCodes.OK).json({
-            error: null,
-            data: { 
-                order: newOrder
-            }
-        });   
-
-    }catch(err) {
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            data: null,
-            error: {message: "Ooops, something went wrong" }
-        });        
+                error: { message: err.message }
+            });        
+        }        
+        else 
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                data: null,
+                error: {message: "Ooops, something went wrong" }
+            });        
     }
 });
+
 
 

@@ -1,16 +1,16 @@
 import express from "express";
 import { Request, Response } from 'express'
-import * as productDatabase from '../repositories/product-repository';
 import { StatusCodes } from "http-status-codes";
+import ProductController from "../controllers/product-controller";
 
+
+const controller = new ProductController();
 
 export const productsRouter = express.Router();
 
 productsRouter.get('/', async (req: Request, res: Response) => {
-    console.log('in productRouter GET All products');
-    
     try {
-        const products = await productDatabase.findAll();
+        const products = await controller.findAll();
         if(!products) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 data:null,
@@ -30,9 +30,8 @@ productsRouter.get('/', async (req: Request, res: Response) => {
 
 productsRouter.get('/:productId', async (req: Request, res: Response) => {
     const productId: string = req.params.productId;
-    console.log(`in productRouter GET  productById: ${productId}`);
     try {
-        const product = await productDatabase.findOne(productId);
+        const product = await controller.findOne(productId);
         if(!product) {
             return res.status(StatusCodes.NOT_FOUND).json({ 
                 data: null, 
