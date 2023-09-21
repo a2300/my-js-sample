@@ -8,3 +8,9 @@ https://dev.to/realsteveig/nodejs-and-typescript-tutorial-build-a-rest-api-with-
 Another example:
 https://nanosoft.co.za/blog/post/clean-api
 https://github.com/nanosoftonline/clean-architecture-express-contacts/blob/master/src/presentation/routers/contact-router.ts
+
+Backend API Server Development with Node.js from Scratch to Production
+https://losikov.medium.com/backend-api-server-development-with-node-js-from-scratch-to-production-fe3d3b860003
+
+Unit testing TypeScript with Jest: Part One — Project setup
+https://duncanlew.medium.com/unit-testing-typescript-with-jest-part-one-f39d2392d0f4
